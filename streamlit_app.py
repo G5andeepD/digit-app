@@ -18,4 +18,5 @@ if generate:
     images = generate_digit_images(generator, digit, num_images=5)
 
     grid_img = make_grid(images, nrow=5, normalize=True).permute(1, 2, 0).numpy()
-    st.image(grid_img, caption="Generated Digits", use_column_width=True)
+    st.image(grid_img, caption="Generated Digits", use_container_width=True)
+
