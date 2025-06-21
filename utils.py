@@ -1,34 +1,34 @@
-
 import torch
 import torch.nn as nn
-import numpy as np
 
 class Generator(nn.Module):
-    def __init__(self, latent_dim=100, label_dim=10, img_shape=(1, 28, 28)):
+    def __init__(self, latent_dim=100, label_dim=10):
         super().__init__()
         self.label_emb = nn.Embedding(label_dim, label_dim)
-        self.model = nn.Sequential(
-            nn.Linear(latent_dim + label_dim, 128),
+        self.init_dim = 256
+        self.fc = nn.Linear(latent_dim + label_dim, self.init_dim * 7 * 7)
+
+        self.conv_blocks = nn.Sequential(
+            nn.BatchNorm2d(self.init_dim),
+            nn.Upsample(scale_factor=2),
+            nn.Conv2d(self.init_dim, 128, 3, 1, 1),
+            nn.BatchNorm2d(128),
             nn.ReLU(True),
-            nn.Linear(128, 256),
-            nn.BatchNorm1d(256),
+            nn.Upsample(scale_factor=2),
+            nn.Conv2d(128, 64, 3, 1, 1),
+            nn.BatchNorm2d(64),
             nn.ReLU(True),
-            nn.Linear(256, 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(True),
-            nn.Linear(512, int(np.prod(img_shape))),
+            nn.Conv2d(64, 1, 3, 1, 1),
             nn.Tanh()
         )
-        self.img_shape = img_shape
 
-    def forward(self, noise, labels):
-        gen_input = torch.cat((noise, self.label_emb(labels)), -1)
-        img = self.model(gen_input)
-        img = img.view(img.size(0), *self.img_shape)
-        return img
+    def forward(self, z, labels):
+        x = torch.cat((z, self.label_emb(labels)), dim=1)
+        x = self.fc(x).view(x.size(0), self.init_dim, 7, 7)
+        return self.conv_blocks(x)
 
-def load_generator(path):
-    generator = Generator()
+def load_generator(path, latent_dim=100):
+    generator = Generator(latent_dim=latent_dim)
     generator.load_state_dict(torch.load(path, map_location="cpu"))
     generator.eval()
     return generator
